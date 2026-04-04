@@ -11,7 +11,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.database import Base
-from app.models.url import URL
+from app.models.url import ShortURL
 from app.models.users import User
 from app.core.config import settings
 

@@ -2,7 +2,7 @@ from app.database import Base
 from sqlalchemy import Column,Integer,String,Boolean,DateTime,func,ForeignKey
 from sqlalchemy.orm import relationship
 
-class URL(Base):
+class ShortURL(Base):
     __tablename__="urls"
     id=Column(Integer,primary_key=True,index=True)
     original_url=Column(String,nullable=False)
