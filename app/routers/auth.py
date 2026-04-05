@@ -22,11 +22,11 @@ def register(info:UserRegister,db:Session=Depends(get_db)):
 
 @router.post("/login",response_model=TokenResponse)
 def login(info:UserLogin,db:Session=Depends(get_db)):
-    data=db.query(User).filter(User.email==data.email).first()
+    data=db.query(User).filter(User.email==info.email).first()
     if not data:
         raise HTTPException(status_code=404,detail="User not found!")
     token=create_access_token(data={
-        "sub":str(User.id)
+        "sub":str(data.id)
     })
     return{
         "access_token":token,

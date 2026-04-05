@@ -13,7 +13,7 @@ def verify_pwd(plain:str,hashed:str):
     return pwd_context.verify(plain,hashed)
 
 def create_access_token(data:dict):
-    to_encode=data.copy
+    to_encode=data.copy()
     expire=datetime.now(timezone.utc)+timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp":expire})
     return jwt.encode(to_encode,settings.SECRET_KEY,settings.ALGORITHM)
