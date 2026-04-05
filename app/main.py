@@ -10,7 +10,20 @@ from app.routers import auth,urls
 
 from fastapi.responses import RedirectResponse
 
+
+
+from app.core.rate_limit import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
+
+
+
 app=FastAPI(title="URL Shortener API",description="URL Shortener SaaS API",version="1.0.0")
+
+#Rate limiter add
+app.state.limiter=limiter
+app.add_exception_handler(RateLimitExceeded,_rate_limit_exceeded_handler)
 
 app.include_router(auth.router)
 app.include_router(urls.router)
@@ -24,7 +37,7 @@ async def startup():
 
 @app.get("/")
 def health_check():
-    return{"message":"api is running !"}
+    return{"message":"URL Shortener api is running !"}
 
 @app.get("/{short_code}")
 def redirect_url(short_code:str,db:Session=Depends(get_db)):
