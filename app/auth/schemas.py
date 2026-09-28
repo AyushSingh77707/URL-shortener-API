@@ -15,9 +15,13 @@ class UserResponse(BaseModel):
     email:EmailStr
     created_at: datetime
 
+class RefreshToken(BaseModel):
+    refresh_token:str
+
     class Config:
         from_attributes=True
 
 class TokenResponse(BaseModel):
     access_token:str
+    refresh_token:str
     token_type:str="bearer"

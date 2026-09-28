@@ -13,18 +13,28 @@ def hash_pwd(password:str)->str:
 def verify_pwd(plain:str,hashed:str)->bool:
     return pwd_context.verify(plain,hashed)
 
+
 def create_access_token(data:dict):
     to_encode=data.copy()
     expire=datetime.now(timezone.utc)+timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp":expire,"jti":str(uuid.uuid4())})
+    to_encode.update({"exp":expire,"jti":str(uuid.uuid4()),"type":"access"})
     return jwt.encode(to_encode,settings.SECRET_KEY,settings.ALGORITHM)
 
-def verify_token(token:str)->dict:
+def create_refresh_token(data:dict):
+    to_encode=data.copy()
+    expire=datetime.now(timezone.utc)+timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp":expire,"jti":str(uuid.uuid4()),"type":"refresh"})
+    return jwt.encode(to_encode,settings.SECRET_KEY,settings.ALGORITHM)
+
+def verify_token(token:str,expected_type:str="access")->dict:
     try:
         payload=jwt.decode(token,settings.SECRET_KEY,algorithms=[settings.ALGORITHM])
-        return payload
     except JWTError as e:
         raise HTTPException(status_code=401,detail="invalid or expire token!")
+
+    if payload.get("type")!=expected_type:
+        raise HTTPException(status_code=401,detail="wrong token type")
+    return payload
 
 
 
