@@ -27,33 +27,32 @@ def register(request:Request,info:UserRegister,db:Session=Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-@router.post("/login",response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
-def login(request:Request,info:UserLogin,db:Session=Depends(get_db)):
-    data=db.query(User).filter(User.email==info.email).first()
-    if not data:
-        raise HTTPException(status_code=404,detail="Email is not registered")
-    access_token=create_access_token(data={
-        "sub":str(data.id)
-    })
-    refresh_token=create_refresh_token({"sub":str(data.id)})
+def login(request: Request, info: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == info.email).first()
 
-    return{
-        "access_token":access_token,
-        "refresh_token":refresh_token,
-        "token_type":"bearer"
+    if not user or not verify_pwd(info.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is disabled")
+
+    return {
+        "access_token": create_access_token({"sub": str(user.id)}),
+        "refresh_token": create_refresh_token({"sub": str(user.id)}),
+        "token_type": "bearer",
     }
 
 @router.post("/logout")
 def logout_user(data:RefreshToken,token:str=Depends(oauth2_scheme)):
-    access_payload=verify_token(token)
-    if not access_payload:
-        raise HTTPException(status_code=401,detail="Invalid Token")
+    access_payload=verify_token(token,expected_type="access")
+    refresh_payload=verify_token(data.refresh_token,expected_type="refresh")
     blacklist_token(access_payload)
-
-    refresh_payload=verify_token(data.refresh_token)
     blacklist_token(refresh_payload)
     return {"message":"Logged out successfully"}
+    
+
 
 @router.post("/refresh")
 def refresh_token(data:RefreshToken):
