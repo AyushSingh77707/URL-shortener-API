@@ -14,12 +14,13 @@ class UserResponse(BaseModel):
     id:int
     email:EmailStr
     created_at: datetime
+    
+    class Config:
+        from_attributes=True
 
 class RefreshToken(BaseModel):
     refresh_token:str
 
-    class Config:
-        from_attributes=True
 
 class TokenResponse(BaseModel):
     access_token:str
