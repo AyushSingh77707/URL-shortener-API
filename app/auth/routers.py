@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException,Depends
 from app.auth.models import User
 from app.core.security import hash_pwd,verify_pwd,verify_token,create_access_token,create_refresh_token
-
+from app.core.oauth import oauth
 from app.core.rate_limit import limiter
 from fastapi import Request
 from app.core.dependencies import oauth2_scheme
@@ -60,7 +60,45 @@ def refresh_token(data:RefreshToken):
 
     if is_blacklisted(payload["jti"]):
         raise HTTPException(status_code=401,detail="token revoked!")
+
+    blacklist_token(payload=payload)
     return {
-        "access_token":create_access_token({"sub":payload["sub"]})
+        "access_token":create_access_token({"sub":payload["sub"]}),
+        "refresh_token":create_refresh_token({"sub":payload["sub"]})
     }
-    
+
+@router.get("/google/login")
+async def google_login(request:Request):
+    redirect_uri=request.url_for("google_callback")
+    return await oauth.google.authorize_redirect(request,redirect_uri)
+
+@router.get("/google/callback")
+async def google_callback(request:Request,db:Session=Depends(get_db)):
+    try:
+        token= await oauth.google.authorize_access_token(request)
+    except Exception as e:
+        print("exception ",repr(e))
+        raise HTTPException(status_code=400,detail="Google authentication failed")
+
+    user_info=token.get("userinfo")
+    if not user_info or not user_info.get("email"):
+        raise HTTPException(status_code=400,detail="could not fetch user information from google")
+
+    email=user_info["email"]
+
+    user=db.query(User).filter(User.email==email).first()
+    if not user:
+        user=User(email=email,password=None)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    access_token=create_access_token({"sub":str(user.id)})
+    refresh_token=create_refresh_token({"sub":str(user.id)})
+
+    return{
+        "access_token":access_token,
+        "refresh_token":refresh_token,
+        "token_type":"bearer"
+    }
+

@@ -8,6 +8,7 @@ from fastapi_cache.backends.redis import RedisBackend
 from sqlalchemy.orm import Session
 from app.urls.model import ShortURL
 from app.auth.models import User
+from app.core.config import settings
 
 from fastapi.responses import RedirectResponse
 
@@ -18,6 +19,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 
 
@@ -36,7 +38,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],   
 )
-
+app.add_middleware(SessionMiddleware,secret_key=settings.SECRET_KEY)
 #Rate limiter add
 app.state.limiter=limiter
 app.add_exception_handler(RateLimitExceeded,_rate_limit_exceeded_handler)
