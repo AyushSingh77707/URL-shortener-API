@@ -9,28 +9,22 @@ from sqlalchemy.orm import Session
 from app.urls.model import ShortURL
 from app.auth.models import User
 from app.core.config import settings
-
 from fastapi.responses import RedirectResponse
-
-
-
 from app.core.rate_limit import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-
-
+from slowapi.middleware import SlowAPIMiddleware
 
 app=FastAPI(title="URL Shortener API",description="URL Shortener SaaS API",version="1.0.0")
 
 origins = [
     "http://localhost:5173",   
     "http://localhost:3000"
-    
 ]
-
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -38,19 +32,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],   
 )
+
 app.add_middleware(SessionMiddleware,secret_key=settings.SECRET_KEY)
+
 #Rate limiter add
 app.state.limiter=limiter
 app.add_exception_handler(RateLimitExceeded,_rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
 
 app.include_router(auth_router)
 app.include_router(url_router)
-
-
-@app.on_event("startup")
-async def startup():
-    redis=aioredis.from_url("redis://localhost:6379")
-    FastAPICache.init(RedisBackend(redis),prefix="cache")
 
 
 @app.get("/")
@@ -67,6 +59,17 @@ def redirect_url(short_code:str,db:Session=Depends(get_db)):
     db.commit()
 
     return RedirectResponse(url=data.original_url)
+
+
+
+
+
+
+
+
+
+
+
 
 
 

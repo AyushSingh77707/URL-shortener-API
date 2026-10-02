@@ -1,13 +1,11 @@
 from app.database import get_db
 from app.auth.schemas import UserRegister,UserLogin,UserResponse,TokenResponse,RefreshToken
-from fastapi import APIRouter
+from fastapi import APIRouter,Response,HTTPException,Request,Depends
 from sqlalchemy.orm import Session
-from fastapi import HTTPException,Depends
 from app.auth.models import User
 from app.core.security import hash_pwd,verify_pwd,verify_token,create_access_token,create_refresh_token
 from app.core.oauth import oauth
 from app.core.rate_limit import limiter
-from fastapi import Request
 from app.core.dependencies import oauth2_scheme
 from app.core.security import verify_token
 from app.services.token_blacklist import blacklist_token,is_blacklisted
@@ -15,8 +13,8 @@ from app.services.token_blacklist import blacklist_token,is_blacklisted
 router=APIRouter(prefix="/auth",tags=["Authentication"])
 
 @router.post("/register",response_model=UserResponse)
-@limiter.limit("1/minute")
-def register(request:Request,info:UserRegister,db:Session=Depends(get_db)):
+@limiter.limit("1/minute;5/day")
+def register(request:Request,response:Response,info:UserRegister,db:Session=Depends(get_db)):
     existing_user=db.query(User).filter(User.email==info.email).first()
     if existing_user:
         raise HTTPException(status_code=401,detail="User already exists!")
@@ -29,7 +27,7 @@ def register(request:Request,info:UserRegister,db:Session=Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
-def login(request: Request, info: UserLogin, db: Session = Depends(get_db)):
+def login(request: Request,response:Response, info: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == info.email).first()
 
     if not user or not verify_pwd(info.password, user.password):
