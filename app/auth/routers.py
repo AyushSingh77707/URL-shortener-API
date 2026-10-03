@@ -1,22 +1,21 @@
 from app.database import get_db
 from app.auth.schemas import UserRegister,UserLogin,UserResponse,TokenResponse,RefreshToken
-from fastapi import APIRouter
+from fastapi import APIRouter,Response,HTTPException,Request,Depends
 from sqlalchemy.orm import Session
-from fastapi import HTTPException,Depends
 from app.auth.models import User
 from app.core.security import hash_pwd,verify_pwd,verify_token,create_access_token,create_refresh_token
 from app.core.oauth import oauth
 from app.core.rate_limit import limiter
-from fastapi import Request
 from app.core.dependencies import oauth2_scheme
 from app.core.security import verify_token
 from app.services.token_blacklist import blacklist_token,is_blacklisted
+from app.services.pkce import generate_pkce_pair
 
 router=APIRouter(prefix="/auth",tags=["Authentication"])
 
 @router.post("/register",response_model=UserResponse)
-@limiter.limit("1/minute")
-def register(request:Request,info:UserRegister,db:Session=Depends(get_db)):
+@limiter.limit("1/minute;5/day")
+def register(request:Request,response:Response,info:UserRegister,db:Session=Depends(get_db)):
     existing_user=db.query(User).filter(User.email==info.email).first()
     if existing_user:
         raise HTTPException(status_code=401,detail="User already exists!")
@@ -29,7 +28,7 @@ def register(request:Request,info:UserRegister,db:Session=Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
-def login(request: Request, info: UserLogin, db: Session = Depends(get_db)):
+def login(request: Request,response:Response, info: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == info.email).first()
 
     if not user or not verify_pwd(info.password, user.password):
@@ -69,18 +68,28 @@ def refresh_token(data:RefreshToken):
 
 @router.get("/google/login")
 async def google_login(request:Request):
+    code_verifier,code_challenge=generate_pkce_pair()
+    request.session["pkce_verifier"]=code_verifier
     redirect_uri=request.url_for("google_callback")
-    return await oauth.google.authorize_redirect(request,redirect_uri)
+    return await oauth.google.authorize_redirect(
+        request,redirect_uri,
+        code_challenge=code_challenge,
+        code_challenge_method="S256"
+        )
 
 @router.get("/google/callback")
 async def google_callback(request:Request,db:Session=Depends(get_db)):
+    code_verifier=request.session.get("pkce_verifier")
+    if not code_verifier:
+        return HTTPException(status_code=400,detail="missing pkce verifier")
     try:
-        token= await oauth.google.authorize_access_token(request)
+        token= await oauth.google.authorize_access_token(request,code_verifier=code_verifier)
     except Exception as e:
         print("exception ",repr(e))
         raise HTTPException(status_code=400,detail="Google authentication failed")
 
     user_info=token.get("userinfo")
+    print(user_info)
     if not user_info or not user_info.get("email"):
         raise HTTPException(status_code=400,detail="could not fetch user information from google")
 
