@@ -49,16 +49,7 @@ app.include_router(url_router)
 def health_check():
     return{"message":"URL Shortener api is running !"}
 
-@app.get("/{short_code}")
-def redirect_url(short_code:str,db:Session=Depends(get_db)):
-    data=db.query(ShortURL).filter(ShortURL.short_code==short_code,ShortURL.is_active==True).first()
-    if not data:
-        raise HTTPException(status_code=404,detail="URL not found!")
-    
-    data.click_count+=1
-    db.commit()
 
-    return RedirectResponse(url=data.original_url)
 
 
 
