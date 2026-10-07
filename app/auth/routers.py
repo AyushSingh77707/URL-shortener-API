@@ -14,7 +14,7 @@ from app.services.pkce import generate_pkce_pair
 router=APIRouter(prefix="/auth",tags=["Authentication"])
 
 @router.post("/register",response_model=UserResponse)
-@limiter.limit("1/minute;5/day")
+@limiter.limit("3/minute;5/day")
 def register(request:Request,response:Response,info:UserRegister,db:Session=Depends(get_db)):
     existing_user=db.query(User).filter(User.email==info.email).first()
     if existing_user:
