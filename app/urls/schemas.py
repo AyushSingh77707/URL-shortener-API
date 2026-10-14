@@ -4,7 +4,7 @@ from datetime import datetime
 
 class URLCreate(BaseModel):
     original_url: AnyHttpUrl
-    expires_at:Optional[str]=None
+    expires_at:Optional[datetime]=None
     custom_alias:Optional[str]=None
 
 class URLResponse(BaseModel):

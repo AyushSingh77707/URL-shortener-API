@@ -7,7 +7,7 @@ from app.urls.model import ShortURL,URLClick
 from app.services.hash_url import base62_encoding
 from fastapi.responses import RedirectResponse
 from app.core.rate_limit import limiter
-from datetime import datetime,timezone
+from datetime import datetime,timezone,timedelta
 from app.core.redis import redis_client
 import json
 
@@ -33,11 +33,15 @@ def shorten_url(request:Request,response:Response,info:URLCreate,db:Session=Depe
         if taken:
             raise HTTPException(status_code=400,detail="This alias is not available")
 
+    expires_at=info.expires_at
+    if expires_at==None:
+        expires_at=datetime.now(timezone.utc)+timedelta(days=7)
 
+ 
     new_url=ShortURL(original_url=str(info.original_url),
                      short_code=info.custom_alias or "x",
                      user_id=current_user.id,
-                     expires_at=info.expires_at)
+                     expires_at=expires_at)
 
     db.add(new_url)
     db.flush()

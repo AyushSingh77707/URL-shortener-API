@@ -136,3 +136,4 @@ def test_auth_logout_invalid_token(client):
         json={"refresh_token": "invalidtoken"}
     )
     assert res.status_code == 401
+
