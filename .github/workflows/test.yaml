@@ -59,6 +59,9 @@ jobs:
 
       - name: Run migrations
         run: alembic upgrade head
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
 
       - name: Run tests
         run: pytest tests/ -v
