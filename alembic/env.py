@@ -19,9 +19,10 @@ from app.core.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
+
 config = context.config
 fileConfig(config.config_file_name)
-
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
 # add your model's MetaData object here
